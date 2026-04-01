@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — WorkTracer{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/" style="color:#888;font-size:12px;">← Dashboard</a>
+</div>
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;">
+  <div>
+    <h1 style="font-size:16px;margin-bottom:4px;">{{ project.name }}</h1>
+    <p style="color:#888;font-size:12px;">
+      {{ project.company.name }}
+      {% if project.roles %} · Rôles : {{ project.roles }}{% endif %}
+      · <span class="badge {% if project.status.value == 'active' %}badge-green{% elif project.status.value == 'paused' %}badge-yellow{% else %}badge-gray{% endif %}">{{ project.status.value }}</span>
+    </p>
+    {% if project.description %}
+    <p style="color:#aaa;margin-top:8px;font-size:12px;">{{ project.description }}</p>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button
+      hx-post="/reports/generate?type=weekly&project={{ project.slug }}"
+      hx-target="#flash"
+      class="btn btn-ghost">Rapport hebdo</button>
+    <button
+      hx-post="/reports/generate?type=monthly&project={{ project.slug }}"
+      hx-target="#flash"
+      class="btn">Rapport mensuel</button>
+  </div>
+</div>
+
+<div id="flash" style="margin-bottom:16px;color:#4ade80;font-size:12px;"></div>
+
+<div class="grid-2">
+
+  <!-- Entrées -->
+  <div class="card">
+    <h3>Activité ({{ entries|length }} dernières entrées)</h3>
+    {% if entries %}
+    <div style="max-height:500px;overflow-y:auto;">
+      {% for e in entries %}
+      <div style="padding:10px 0;border-bottom:1px solid #2e2e2e;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="source-{{ e.source.value }}" style="font-size:11px;">{{ e.source.value }}</span>
+          <span style="color:#888;font-size:11px;">{{ e.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+          {% if e.tags %}
+          <span style="color:#888;font-size:11px;">[{{ e.tags }}]</span>
+          {% endif %}
+        </div>
+        <p style="font-size:13px;">{{ e.title }}</p>
+        {% if e.body %}
+        <p style="color:#888;font-size:11px;margin-top:4px;">{{ e.body[:150] }}{% if e.body|length > 150 %}…{% endif %}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:#888;">Aucune activité enregistrée.</p>
+    {% endif %}
+  </div>
+
+  <!-- Rapports -->
+  <div class="card">
+    <h3>Rapports ({{ reports|length }})</h3>
+    {% if reports %}
+    {% for r in reports %}
+    <div style="padding:10px 0;border-bottom:1px solid #2e2e2e;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          {% if r.type.value == 'weekly' %}<span class="badge badge-blue">hebdo</span>
+          {% elif r.type.value == 'monthly' %}<span class="badge badge-yellow">mensuel</span>
+          {% else %}<span class="badge badge-green">trimestriel</span>{% endif %}
+          <span style="color:#888;font-size:11px;margin-left:8px;">
+            {{ r.period_start.strftime('%d/%m') }} → {{ r.period_end.strftime('%d/%m/%Y') }}
+          </span>
+        </div>
+        <a href="/dashboard/report/{{ r.id }}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">Voir →</a>
+      </div>
+      <p style="color:#888;font-size:11px;margin-top:6px;">
+        Généré le {{ r.generated_at.strftime('%d/%m/%Y à %H:%M') }}
+      </p>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#888;">Aucun rapport généré pour ce projet.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

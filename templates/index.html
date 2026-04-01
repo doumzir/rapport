@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}WorkTracer — Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+  <h1 style="font-size:16px;">Dashboard</h1>
+  <form method="post" action="/reports/generate" style="display:flex;gap:8px;align-items:center;">
+    <input type="hidden" name="_method" value="POST">
+    <select name="type" style="padding:6px 10px;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:4px;color:#e0e0e0;font-family:monospace;font-size:12px;">
+      <option value="weekly">Rapport hebdo</option>
+      <option value="monthly">Rapport mensuel</option>
+      <option value="quarterly">Rapport trimestriel</option>
+    </select>
+    <button type="submit"
+      hx-post="/reports/generate"
+      hx-include="[name='type']"
+      hx-target="#flash"
+      hx-indicator="#flash"
+      class="btn"
+      style="margin:0;">
+      ▶ Générer maintenant
+    </button>
+  </form>
+</div>
+
+<div id="flash" style="margin-bottom:16px;color:#4ade80;font-size:12px;"></div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+
+  <!-- Projets -->
+  <div class="card">
+    <h3>Projets ({{ projects|length }})</h3>
+    {% if projects %}
+    <table>
+      <thead>
+        <tr><th>Projet</th><th>Entreprise</th><th>Rôles</th><th>Statut</th></tr>
+      </thead>
+      <tbody>
+        {% for p in projects %}
+        <tr>
+          <td><a href="/dashboard/project/{{ p.slug }}">{{ p.name }}</a></td>
+          <td style="color:#888;">{{ p.company.name }}</td>
+          <td style="color:#888;font-size:11px;">{{ p.roles or '—' }}</td>
+          <td>
+            {% if p.status.value == 'active' %}
+              <span class="badge badge-green">actif</span>
+            {% elif p.status.value == 'paused' %}
+              <span class="badge badge-yellow">pausé</span>
+            {% else %}
+              <span class="badge badge-gray">{{ p.status.value }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888;">Aucun projet. Crée-en un via l'API : <code>POST /projects</code></p>
+    {% endif %}
+  </div>
+
+  <!-- Rapports récents -->
+  <div class="card">
+    <h3>Rapports récents</h3>
+    {% if recent_reports %}
+    <table>
+      <thead>
+        <tr><th>Type</th><th>Période</th><th>Projet</th></tr>
+      </thead>
+      <tbody>
+        {% for r in recent_reports %}
+        <tr>
+          <td>
+            <a href="/dashboard/report/{{ r.id }}">
+              {% if r.type.value == 'weekly' %}<span class="badge badge-blue">hebdo</span>
+              {% elif r.type.value == 'monthly' %}<span class="badge badge-yellow">mensuel</span>
+              {% else %}<span class="badge badge-green">trimestriel</span>{% endif %}
+            </a>
+          </td>
+          <td style="color:#888;font-size:11px;">{{ r.period_start.strftime('%d/%m') }} → {{ r.period_end.strftime('%d/%m/%Y') }}</td>
+          <td style="color:#888;font-size:11px;">{{ r.project.name if r.project else 'Tous' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888;">Aucun rapport. Génère-en un avec le bouton ci-dessus.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Activité récente -->
+<div class="card">
+  <h3>Activité récente</h3>
+  {% if recent_entries %}
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Projet</th><th>Source</th><th>Titre</th><th>Tags</th></tr>
+    </thead>
+    <tbody>
+      {% for e in recent_entries %}
+      <tr>
+        <td style="color:#888;white-space:nowrap;">{{ e.created_at.strftime('%d/%m %H:%M') }}</td>
+        <td><a href="/dashboard/project/{{ e.project.slug }}">{{ e.project.name }}</a></td>
+        <td>
+          <span class="source-{{ e.source.value }}">{{ e.source.value }}</span>
+        </td>
+        <td>{{ e.title[:80] }}{% if e.title|length > 80 %}…{% endif %}</td>
+        <td style="color:#888;font-size:11px;">{{ e.tags or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#888;">Aucune activité. Installe un git hook ou utilise <code>POST /log</code>.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

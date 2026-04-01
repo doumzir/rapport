@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Rapport {{ report.type.value }} — WorkTracer{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="/" style="color:#888;font-size:12px;">← Dashboard</a>
+  {% if report.project %}
+  <span style="color:#888;font-size:12px;"> · </span>
+  <a href="/dashboard/project/{{ report.project.slug }}" style="color:#888;font-size:12px;">{{ report.project.name }}</a>
+  {% endif %}
+</div>
+
+<!-- En-tête rapport -->
+<div style="margin-bottom:24px;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+    {% if report.type.value == 'weekly' %}
+      <span class="badge badge-blue" style="font-size:13px;padding:4px 12px;">Rapport Hebdomadaire</span>
+    {% elif report.type.value == 'monthly' %}
+      <span class="badge badge-yellow" style="font-size:13px;padding:4px 12px;">Rapport Mensuel</span>
+    {% else %}
+      <span class="badge badge-green" style="font-size:13px;padding:4px 12px;">Rapport Trimestriel</span>
+    {% endif %}
+    <span style="color:#888;font-size:13px;">
+      {{ report.period_start.strftime('%d/%m/%Y') }} → {{ report.period_end.strftime('%d/%m/%Y') }}
+    </span>
+  </div>
+  <p style="color:#888;font-size:11px;">
+    Généré le {{ report.generated_at.strftime('%d/%m/%Y à %H:%M') }}
+    {% if report.project %} · Projet : {{ report.project.name }}{% else %} · Tous projets{% endif %}
+  </p>
+</div>
+
+<!-- Onglets -->
+<div id="tabs" style="display:flex;gap:2px;margin-bottom:0;border-bottom:1px solid #2e2e2e;">
+  <button onclick="showTab('tech')" id="tab-tech"
+    style="padding:8px 20px;background:#242424;border:1px solid #2e2e2e;border-bottom:none;border-radius:4px 4px 0 0;color:#e0e0e0;cursor:pointer;font-family:monospace;font-size:12px;">
+    Technique
+  </button>
+  <button onclick="showTab('exec')" id="tab-exec"
+    style="padding:8px 20px;background:#1a1a1a;border:1px solid #2e2e2e;border-bottom:1px solid #1a1a1a;border-radius:4px 4px 0 0;color:#888;cursor:pointer;font-family:monospace;font-size:12px;">
+    Exécutif (non-tech)
+  </button>
+</div>
+
+<!-- Section Technique -->
+<div id="content-tech" class="card" style="border-top:none;border-radius:0 6px 6px 6px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <p style="color:#888;font-size:11px;">Pour toi — analyse factuelle complète</p>
+    <button onclick="copyContent('tech')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">Copier</button>
+  </div>
+  <pre id="text-tech" style="color:#e0e0e0;font-size:12px;line-height:1.8;">{{ report.content_technical }}</pre>
+</div>
+
+<!-- Section Exécutive -->
+<div id="content-exec" class="card" style="display:none;border-top:none;border-radius:0 6px 6px 6px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <p style="color:#888;font-size:11px;">Pour tes patrons — langage business, pas de jargon</p>
+    <button onclick="copyContent('exec')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">Copier</button>
+  </div>
+  <pre id="text-exec" style="color:#e0e0e0;font-size:12px;line-height:1.8;">{{ report.content_executive }}</pre>
+</div>
+
+<script>
+function showTab(tab) {
+  document.getElementById('content-tech').style.display = tab === 'tech' ? 'block' : 'none';
+  document.getElementById('content-exec').style.display = tab === 'exec' ? 'block' : 'none';
+  document.getElementById('tab-tech').style.background = tab === 'tech' ? '#242424' : '#1a1a1a';
+  document.getElementById('tab-tech').style.color = tab === 'tech' ? '#e0e0e0' : '#888';
+  document.getElementById('tab-exec').style.background = tab === 'exec' ? '#242424' : '#1a1a1a';
+  document.getElementById('tab-exec').style.color = tab === 'exec' ? '#e0e0e0' : '#888';
+}
+function copyContent(tab) {
+  const text = document.getElementById('text-' + tab).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+</script>
+
+{% endblock %}
