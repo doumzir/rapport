@@ -380,7 +380,7 @@ def scheduler_jobs():
 # ── Git hook install script ───────────────────────────────────────────────────
 
 @app.get("/install-hook", dependencies=[Depends(require_api_key)])
-def install_hook(request: Request):
+def install_hook(request: Request, project: str = Query(...)):
     host = str(request.base_url).rstrip("/")
     api_key = request.headers.get("x-api-key", "YOUR_API_KEY")
     script = f"""#!/bin/bash
@@ -389,7 +389,7 @@ def install_hook(request: Request):
 
 WORKTRACER_HOST="{host}"
 WORKTRACER_API_KEY="{api_key}"
-PROJECT_SLUG=""  # À DÉFINIR : slug du projet dans WorkTracer
+PROJECT_SLUG="{project}"
 
 if [ -z "$PROJECT_SLUG" ]; then
   echo "[WorkTracer] PROJECT_SLUG non défini dans .git/hooks/post-commit — hook ignoré" >&2
