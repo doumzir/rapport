@@ -144,20 +144,23 @@ Le dashboard est accessible sur `http://localhost:8000` (login avec la valeur de
 
 ```bash
 # 1. Créer l'entreprise
-curl -X POST https://<host>/companies \
-  -H "X-API-Key: <token>" \
+curl -s -X POST "https://rapport-production-7ea0.up.railway.app/companies" \
+  -H "X-API-Key: e7840acc004da55b637716ea6ba38e58524cbea0d5005809af990e39713291bc" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Acme Corp", "slug": "acme"}'
+  -d '{"name":"NomEntreprise","slug":"slug-entreprise"}'
 
 # 2. Créer le projet
-curl -X POST https://<host>/projects \
-  -H "X-API-Key: <token>" \
+curl -s -X POST "https://rapport-production-7ea0.up.railway.app/projects" \
+  -H "X-API-Key: e7840acc004da55b637716ea6ba38e58524cbea0d5005809af990e39713291bc" \
   -H "Content-Type: application/json" \
-  -d '{"company_slug":"acme","name":"Site vitrine","slug":"acme-site","roles":"dev,seo,design"}'
+  -d '{"company_slug":"slug-entreprise","name":"NomProjet","slug":"slug-projet"}'
 
-# 3. Installer le hook dans le repo git
-curl -s https://<host>/install-hook -H "X-API-Key: <token>" | bash
-# puis éditer .git/hooks/post-commit → définir PROJECT_SLUG="acme-site"
+# 3. Installer le hook dans le repo (depuis le dossier du repo)
+curl -s "https://rapport-production-7ea0.up.railway.app/install-hook?project=slug-projet" \
+  -H "X-API-Key: e7840acc004da55b637716ea6ba38e58524cbea0d5005809af990e39713291bc" | bash
+
+# 4. Backfill historique (depuis le dossier du repo)
+bash /Users/demdoum/rapportDeTravail/worktracer/hooks/backfill.sh --since "2026-04-01"
 ```
 
 ---
@@ -174,6 +177,18 @@ curl -s https://<host>/install-hook -H "X-API-Key: <token>" | bash
 
 ---
 
+## Règles de gestion du journal de session
+
+**À chaque début de session**, lire la section `## Journal de session` en bas de ce fichier pour reprendre le contexte exact où la dernière session s'est arrêtée.
+
+**À chaque fin de session** (ou quand l'utilisateur le demande), mettre à jour le journal :
+- Ajouter une entrée datée avec ce qui a été fait, l'état actuel, et ce qui reste
+- Supprimer les entrées jugées obsolètes (tâches terminées depuis longtemps, contexte dépassé) pour ne pas surcharger
+- Conserver maximum 5-8 entrées — au-delà, fusionner les plus anciennes en un résumé court
+- L'objectif est un journal **vivant et concis**, pas une archive exhaustive
+
+---
+
 ## Extensions futures envisagées (ne pas implémenter sans demande explicite)
 
 - Import depuis Notion / Linear / GitHub Issues
@@ -181,3 +196,25 @@ curl -s https://<host>/install-hook -H "X-API-Key: <token>" | bash
 - Interface de configuration des projets depuis le dashboard (actuellement via API)
 - Authentification multi-utilisateurs
 - Export PDF des rapports
+
+---
+
+## Journal de session
+
+### 2026-04-01 / 04-02 — Session initiale
+
+**Réalisé :**
+- Projet WorkTracer créé de zéro : FastAPI + PostgreSQL + APScheduler + Claude API + HTMX
+- Déployé sur Railway : `https://rapport-production-7ea0.up.railway.app` ✅
+- 5 entreprises et projets créés en DB : mepac, upgradeformation, upgradelearning, betclim, tfc (hotlineservice)
+- Hook git installé dans le repo `upgradeformation` (PROJECT_SLUG pré-rempli via `?project=`)
+
+**État actuel :**
+- Serveur up, DB connectée, scheduler actif (hebdo lundi 7h / mensuel 1er / trimestriel 1er jan-avr-jul-oct)
+- Hook installé sur upgradeformation — les autres repos (mepac, upgradelearning, betclim, tfc) restent à faire
+- Backfill historique pas encore lancé sur aucun repo
+
+**Reste à faire :**
+1. Installer le hook sur les 4 autres repos (mepac, upgradelearning, betclim, tfc) — commande prête dans la section "Ajout d'un nouveau projet"
+2. Lancer le backfill sur chaque repo depuis le bon dossier : `bash /Users/demdoum/rapportDeTravail/worktracer/hooks/backfill.sh --since "2026-04-01"` — à adapter dans `backfill.sh` : mettre le bon `PROJECT_SLUG` en haut du fichier avant chaque lancement
+3. Générer les premiers rapports une fois le backfill fait : `curl -s -X POST "https://rapport-production-7ea0.up.railway.app/reports/generate?type=monthly" -H "X-API-Key: e7840acc004da55b637716ea6ba38e58524cbea0d5005809af990e39713291bc"`
