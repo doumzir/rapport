@@ -75,14 +75,11 @@ Company  →  1:N  →  Project  →  1:N  →  WorkEntry
 | Trimestriel | `claude-sonnet-4-6` | Analyse profonde, 1x/trimestre |
 
 ### Prompt system — principe fondateur
-Le prompt `SYSTEM_PROMPT` dans `reports.py` est **non négociable** :
-- Neutralité absolue, rigueur factuelle, zéro complaisance
-- Pas de confort psychologique, pas de blabla motivationnel
-- Identification des risques présents ET futurs
-- La plus-value se calcule, elle ne se ressent pas
-- Rapport neutre ≠ rapport vide : c'est un rapport honnête
+Le `SYSTEM_PROMPT` s'applique **uniquement à la section technique**.
+La section exécutive a ses propres règles (voir ci-dessous) qui priment sur le system prompt.
 
-Ne jamais adoucir, reformuler positivement, ou atténuer le prompt système.
+**Section technique** : neutralité absolue, rigueur factuelle, zéro complaisance, identification des risques.
+**Section exécutive** : purement descriptive — ce qui a été produit, rien d'autre. Pas d'opinions, pas de recommandations, pas de jargon technique (commits, branches, etc.).
 
 ### Structure de sortie
 Chaque rapport contient **2 sections séparées par `---EXECUTIVE---`** :

@@ -31,7 +31,12 @@ Règles absolues :
 
 Tu produis TOUJOURS deux sections séparées par le marqueur ---EXECUTIVE--- :
 1. Section TECHNIQUE (pour le contributeur lui-même, détaillée, factuelle)
-2. Section EXÉCUTIVE (pour des dirigeants non-techniques : langage business, indicateurs simples, pas de jargon)"""
+2. Section EXÉCUTIVE (pour des dirigeants non-techniques) — RÈGLES STRICTES pour cette section :
+   - PAS de mention de commits, branches, git, pull requests, ou tout terme technique
+   - PAS d'opinions, jugements, recommandations, ou évaluations ("insuffisant", "bon rythme", etc.)
+   - PAS de conseils, ni de "points d'attention", ni de "risques"
+   - UNIQUEMENT : ce qui a été produit, livré, ou réalisé — les faits, rien d'autre
+   - Ton neutre et purement descriptif. Le lecteur tire ses propres conclusions."""
 
 
 def _format_entries_for_prompt(entries: list[WorkEntry]) -> str:
@@ -100,12 +105,9 @@ Note : les données sont des commits git et des entrées manuelles — NE PAS in
 
 ---EXECUTIVE---
 
-SECTION EXÉCUTIVE — Inclure :
-1. État de chaque projet : 🟢 en bonne progression / 🟡 risques à surveiller / 🔴 problème réel
-2. Ce qui a été livré ou accompli en termes business (pas de jargon technique)
-3. Ce qui n'a pas avancé et pourquoi ça compte
-4. Risques business identifiés
-5. Actions recommandées (si applicable)"""
+SECTION EXÉCUTIVE — Décrire uniquement ce qui a été produit ou réalisé cette semaine, projet par projet.
+Langage accessible, sans jargon technique, sans opinion, sans recommandation.
+Liste factuelle uniquement."""
 
 
 def _build_monthly_prompt(
@@ -136,12 +138,9 @@ Note : les données sont des commits git et des entrées manuelles — NE PAS in
 
 ---EXECUTIVE---
 
-SECTION EXÉCUTIVE — Inclure :
-1. Vue d'ensemble du mois : quels projets ont progressé, lesquels ont stagné
-2. Indicateur par projet : 🟢 / 🟡 / 🔴 avec justification en une ligne
-3. Valeur business créée ce mois (fonctionnalités, corrections critiques, améliorations visibles)
-4. Points d'attention pour le mois suivant
-5. Recommandations concrètes pour la direction"""
+SECTION EXÉCUTIVE — Pour chaque projet, décrire uniquement ce qui a été produit ou réalisé ce mois.
+Langage accessible, sans jargon technique, sans opinion, sans recommandation, sans jugement.
+Liste factuelle uniquement."""
 
 
 def _build_quarterly_prompt(
@@ -171,13 +170,9 @@ SECTION TECHNIQUE — Inclure :
 
 ---EXECUTIVE---
 
-SECTION EXÉCUTIVE — Inclure :
-1. Résumé exécutif du trimestre : ce qui a avancé, ce qui a stagné, ce qui a reculé
-2. Indicateurs trimestriels par projet avec évolution vs trimestre précédent (si données dispo)
-3. ROI global de l'effort fourni ce trimestre
-4. Risques business à traiter en priorité
-5. Recommandations stratégiques pour le trimestre suivant
-6. Points de vigilance pour la direction"""
+SECTION EXÉCUTIVE — Pour chaque projet, décrire uniquement ce qui a été produit ou réalisé ce trimestre.
+Langage accessible, sans jargon technique, sans opinion, sans recommandation, sans jugement.
+Liste factuelle uniquement."""
 
 
 def generate_report(
