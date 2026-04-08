@@ -511,7 +511,6 @@ async def pointage_save(
     arrival_str = form.get("arrival_time", "").strip()
     departure_str = form.get("departure_time", "").strip()
     break_type = form.get("break_type", "").strip()
-    break_note = form.get("break_note", "").strip()
 
     try:
         entry_date = date_type.fromisoformat(date_str)
@@ -523,11 +522,12 @@ async def pointage_save(
 
     # Minutes de pause
     break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
+    break_note = None
     if break_type == "other":
-        # Essayer de parser depuis break_note (ex: "45 min" ou "45")
-        import re as _re
-        m = _re.search(r"\d+", break_note)
-        break_minutes = int(m.group()) if m else 0
+        bh = int(form.get("break_hours", 0) or 0)
+        bm = int(form.get("break_mins", 0) or 0)
+        break_minutes = bh * 60 + bm
+        break_note = f"{bh}h{bm:02d}" if bh else f"{bm}min"
 
     arrival = None
     departure = None
@@ -602,7 +602,6 @@ async def pointer_depart(
 
     form = await request.form()
     break_type = form.get("break_type", "").strip()
-    break_note = form.get("break_note", "").strip()
 
     if not break_type:
         return RedirectResponse("/pointage?msg=err_break", status_code=303)
@@ -613,16 +612,18 @@ async def pointer_depart(
         return RedirectResponse("/pointage?msg=err_arrival", status_code=303)
 
     break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
+    break_note = None
     if break_type == "other":
-        import re as _re
-        m = _re.search(r"\d+", break_note)
-        break_minutes = int(m.group()) if m else 0
+        bh = int(form.get("break_hours", 0) or 0)
+        bm = int(form.get("break_mins", 0) or 0)
+        break_minutes = bh * 60 + bm
+        break_note = f"{bh}h{bm:02d}" if bh else f"{bm}min"
 
     now = datetime.now(_TZ_ALGIERS)
     entry.departure_time = time_type(now.hour, now.minute)
     entry.break_type = break_type
     entry.break_minutes = break_minutes
-    entry.break_note = break_note or None
+    entry.break_note = break_note
     entry.updated_at = datetime.now(timezone.utc)
     db.commit()
     return RedirectResponse("/pointage?msg=depart_ok", status_code=303)

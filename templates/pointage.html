@@ -198,9 +198,15 @@
         {{ label }}
       </label>
       {% endfor %}
-      <div id="dep-break-note-wrap" style="display:none; margin-top:4px;">
-        <input type="text" name="break_note" placeholder="Durée (ex: 45 min)"
-          style="padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; width:100%;">
+      <div id="dep-break-note-wrap" style="display:none; margin-top:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="number" name="break_hours" min="0" max="8" value="0"
+            style="width:60px; padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; text-align:center;">
+          <span style="color:var(--muted); font-size:12px;">h</span>
+          <input type="number" name="break_mins" min="0" max="59" value="0"
+            style="width:60px; padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; text-align:center;">
+          <span style="color:var(--muted); font-size:12px;">min</span>
+        </div>
       </div>
       <button type="submit" class="btn btn-departure" style="margin-top:12px;" id="btn-depart" disabled>
         Pointer le départ maintenant
@@ -252,10 +258,18 @@
           {{ label }}
         </label>
         {% endfor %}
-        <input type="text" name="break_note" id="edit-break-note"
-          placeholder="Durée (ex: 45 min)"
-          value="{% if edit_entry and edit_entry.break_note %}{{ edit_entry.break_note }}{% endif %}"
-          class="break-note-input{% if edit_entry and edit_entry.break_type == 'other' %} visible{% endif %}">
+        <div id="edit-break-note-wrap" style="{% if not (edit_entry and edit_entry.break_type == 'other') %}display:none;{% endif %} margin-top:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="number" name="break_hours" id="edit-break-hours" min="0" max="8"
+              value="{% if edit_entry and edit_entry.break_type == 'other' %}{{ (edit_entry.break_minutes // 60) }}{% else %}0{% endif %}"
+              style="width:60px; padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; text-align:center;">
+            <span style="color:var(--muted); font-size:12px;">h</span>
+            <input type="number" name="break_mins" id="edit-break-mins" min="0" max="59"
+              value="{% if edit_entry and edit_entry.break_type == 'other' %}{{ (edit_entry.break_minutes % 60) }}{% else %}0{% endif %}"
+              style="width:60px; padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; text-align:center;">
+            <span style="color:var(--muted); font-size:12px;">min</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -338,8 +352,8 @@ function onDepartBreak(radio) {
 
 // ── Formulaire édition ─────────────────────────────────────────────────────
 function onEditBreak(radio) {
-  const noteField = document.getElementById('edit-break-note');
-  noteField.classList.toggle('visible', radio.value === 'other');
+  document.getElementById('edit-break-note-wrap').style.display =
+    radio.value === 'other' ? 'block' : 'none';
   document.querySelectorAll('[id^="lbl-edit-"]').forEach(l => l.classList.remove('selected'));
   document.getElementById('lbl-edit-' + radio.value).classList.add('selected');
 }
