@@ -90,11 +90,13 @@ Entrées de travail enregistrées cette semaine :
 ---
 
 SECTION TECHNIQUE — Inclure :
-1. Résumé par projet : volume d'activité, nature des tâches (dev, infra, SEO, design…)
+1. Résumé par projet : nombre de commits/tâches, nature du travail (dev, infra, SEO, design…)
 2. Progression concrète : qu'est-ce qui a réellement avancé ? Qu'est-ce qui est resté bloqué ?
-3. Plus-value produite ou temps perdu (sois direct)
-4. Risques ou dettes identifiés
-5. Signaux faibles (tâches répétées, domaines non touchés depuis longtemps)
+3. Plus-value produite — ce qui a changé concrètement (fonctionnalités, corrections, infra)
+4. Risques ou dettes identifiés dans le code ou les tâches
+5. Signaux faibles (tâches répétées, zones non touchées, patterns préoccupants)
+
+Note : les données sont des commits git et des entrées manuelles — NE PAS inventer ni mentionner d'heures travaillées, ce n'est pas tracé.
 
 ---EXECUTIVE---
 
@@ -124,19 +126,20 @@ Toutes les entrées de travail du mois :
 ---
 
 SECTION TECHNIQUE — Inclure :
-1. Bilan par projet sur le mois complet : volume, nature, répartition des efforts
-2. Évolution observée : le projet avance-t-il ? À quel rythme ? Est-ce cohérent ?
-3. Calcul de la plus-value produite : ce qui existait avant vs ce qui existe maintenant
-4. Impact négatif ou dette technique accumulée
-5. Tendances préoccupantes (même légères)
-6. Comparaison effort fourni vs valeur produite
+1. Bilan par projet sur le mois complet : nombre de commits/tâches, nature du travail, répartition
+2. Évolution observée : le projet avance-t-il ? Quelles fonctionnalités ou corrections ont abouti ?
+3. Plus-value concrète produite : ce qui a changé (fonctionnalités livrées, bugs corrigés, infra améliorée)
+4. Impact négatif ou dette technique accumulée visible dans les commits
+5. Tendances préoccupantes (répétitions, zones jamais touchées, rythme irrégulier)
+
+Note : les données sont des commits git et des entrées manuelles — NE PAS inventer ni mentionner d'heures travaillées, ce n'est pas tracé.
 
 ---EXECUTIVE---
 
 SECTION EXÉCUTIVE — Inclure :
 1. Vue d'ensemble du mois : quels projets ont progressé, lesquels ont stagné
 2. Indicateur par projet : 🟢 / 🟡 / 🔴 avec justification en une ligne
-3. Valeur business créée (ou détruite) ce mois
+3. Valeur business créée ce mois (fonctionnalités, corrections critiques, améliorations visibles)
 4. Points d'attention pour le mois suivant
 5. Recommandations concrètes pour la direction"""
 
