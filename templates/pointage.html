@@ -134,35 +134,37 @@
 
   {# Boutons rapides #}
   {% if not (today_entry and today_entry.arrival_time) %}
-    {# Pointer arrivée — nécessite sélection pause #}
-    <form method="post" action="/pointage/pointer-arrivee" id="form-arrivee">
-      <p style="font-size:11px; color:var(--yellow); margin-bottom:8px;">
-        Sélectionner votre pause avant de pointer l'arrivée (obligatoire) :
-      </p>
-      {% for key, (label, minutes) in break_options.items() %}
-      <label class="break-option" id="lbl-quick-{{ key }}">
-        <input type="radio" name="break_type" value="{{ key }}" onchange="onQuickBreak(this)">
-        {{ label }}
-      </label>
-      {% endfor %}
-      <div class="break-note-input" id="quick-break-note-wrap">
-        <input type="text" name="break_note" id="quick-break-note" placeholder="Durée (ex: 45 min)" class="break-note-input visible" style="margin-top:0;">
-      </div>
-      <button type="submit" class="btn btn-arrival" style="margin-top:12px;" id="btn-arrivee" disabled>
+    {# Pointer arrivée — juste un bouton #}
+    <form method="post" action="/pointage/pointer-arrivee">
+      <button type="submit" class="btn btn-arrival" style="margin-top:8px;">
         Pointer l'arrivée maintenant
       </button>
     </form>
   {% elif not (today_entry and today_entry.departure_time) %}
-    <p style="font-size:11px; color:var(--muted); margin-bottom:8px;">
-      Pause : <strong style="color:var(--text);">{{ today_entry.break_type }}{% if today_entry.break_note and today_entry.break_type == "other" %} ({{ today_entry.break_note }}){% endif %}</strong>
-      — <a href="/pointage?edit={{ today.isoformat() }}" style="font-size:11px;">modifier</a>
-    </p>
-    <form method="post" action="/pointage/pointer-depart">
-      <button type="submit" class="btn btn-departure">
+    {# Pointer départ — pause obligatoire ici #}
+    <form method="post" action="/pointage/pointer-depart" id="form-depart">
+      <p style="font-size:11px; color:var(--yellow); margin-bottom:8px;">
+        Sélectionner votre pause avant de pointer le départ (obligatoire) :
+      </p>
+      {% for key, (label, minutes) in break_options.items() %}
+      <label class="break-option" id="lbl-dep-{{ key }}">
+        <input type="radio" name="break_type" value="{{ key }}" onchange="onDepartBreak(this)">
+        {{ label }}
+      </label>
+      {% endfor %}
+      <div id="dep-break-note-wrap" style="display:none; margin-top:4px;">
+        <input type="text" name="break_note" placeholder="Durée (ex: 45 min)"
+          style="padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font); font-size:12px; width:100%;">
+      </div>
+      <button type="submit" class="btn btn-departure" style="margin-top:12px;" id="btn-depart" disabled>
         Pointer le départ maintenant
       </button>
     </form>
   {% else %}
+    {% set wm = calc_worked(today_entry.arrival_time, today_entry.departure_time, today_entry.break_minutes) %}
+    <div style="margin-top:8px; font-size:12px; color:var(--muted);">
+      Pause : <strong style="color:var(--text);">{{ today_entry.break_type }}{% if today_entry.break_note and today_entry.break_type == "other" %} ({{ today_entry.break_note }}){% endif %}</strong>
+    </div>
     <div style="margin-top:8px;">
       <a href="/pointage?edit={{ today.isoformat() }}" class="btn btn-ghost btn-sm">Modifier</a>
     </div>
@@ -287,22 +289,14 @@
 </div>{# fin pointage-grid #}
 
 <script>
-// ── Quick pointer (arrivée) ────────────────────────────────────────────────
-function onQuickBreak(radio) {
-  document.getElementById('btn-arrivee').disabled = false;
-  // Afficher/masquer note
-  const noteWrap = document.getElementById('quick-break-note-wrap');
-  noteWrap.style.display = radio.value === 'other' ? 'block' : 'none';
-  // Highlight
-  document.querySelectorAll('[id^="lbl-quick-"]').forEach(l => l.classList.remove('selected'));
-  document.getElementById('lbl-quick-' + radio.value).classList.add('selected');
+// ── Pointer départ — sélection pause ──────────────────────────────────────
+function onDepartBreak(radio) {
+  document.getElementById('btn-depart').disabled = false;
+  document.getElementById('dep-break-note-wrap').style.display =
+    radio.value === 'other' ? 'block' : 'none';
+  document.querySelectorAll('[id^="lbl-dep-"]').forEach(l => l.classList.remove('selected'));
+  document.getElementById('lbl-dep-' + radio.value).classList.add('selected');
 }
-
-// Init : masquer le champ note si "other" non sélectionné
-document.addEventListener('DOMContentLoaded', function() {
-  const noteWrap = document.getElementById('quick-break-note-wrap');
-  if (noteWrap) noteWrap.style.display = 'none';
-});
 
 // ── Formulaire édition ─────────────────────────────────────────────────────
 function onEditBreak(radio) {

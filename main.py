@@ -536,19 +536,6 @@ async def pointer_arrivee(
     if not _check_pointage_auth(request):
         raise HTTPException(status_code=401)
 
-    form = await request.form()
-    break_type = form.get("break_type", "").strip()
-    break_note = form.get("break_note", "").strip()
-
-    if not break_type:
-        return RedirectResponse("/pointage?msg=err_break", status_code=303)
-
-    break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
-    if break_type == "other":
-        import re as _re
-        m = _re.search(r"\d+", break_note)
-        break_minutes = int(m.group()) if m else 0
-
     now = datetime.now(timezone.utc).astimezone()
     arrival = time_type(now.hour, now.minute)
     today = date_type.today()
@@ -556,18 +543,9 @@ async def pointer_arrivee(
     entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
     if entry:
         entry.arrival_time = arrival
-        entry.break_type = break_type
-        entry.break_minutes = break_minutes
-        entry.break_note = break_note or None
         entry.updated_at = datetime.now(timezone.utc)
     else:
-        entry = TimeEntry(
-            date=today,
-            arrival_time=arrival,
-            break_type=break_type,
-            break_minutes=break_minutes,
-            break_note=break_note or None,
-        )
+        entry = TimeEntry(date=today, arrival_time=arrival)
         db.add(entry)
     db.commit()
     return RedirectResponse("/pointage?msg=arrivee_ok", status_code=303)
@@ -581,13 +559,29 @@ async def pointer_depart(
     if not _check_pointage_auth(request):
         raise HTTPException(status_code=401)
 
+    form = await request.form()
+    break_type = form.get("break_type", "").strip()
+    break_note = form.get("break_note", "").strip()
+
+    if not break_type:
+        return RedirectResponse("/pointage?msg=err_break", status_code=303)
+
     today = date_type.today()
     entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
     if not entry or not entry.arrival_time:
         return RedirectResponse("/pointage?msg=err_arrival", status_code=303)
 
+    break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
+    if break_type == "other":
+        import re as _re
+        m = _re.search(r"\d+", break_note)
+        break_minutes = int(m.group()) if m else 0
+
     now = datetime.now(timezone.utc).astimezone()
     entry.departure_time = time_type(now.hour, now.minute)
+    entry.break_type = break_type
+    entry.break_minutes = break_minutes
+    entry.break_note = break_note or None
     entry.updated_at = datetime.now(timezone.utc)
     db.commit()
     return RedirectResponse("/pointage?msg=depart_ok", status_code=303)
