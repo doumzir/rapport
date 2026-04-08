@@ -217,6 +217,18 @@ def git_webhook(payload: GitWebhookPayload, db: Session = Depends(get_db)):
         except ValueError:
             pass
 
+    # Dédupliquer par commit_hash — si existe déjà, mettre à jour la date si nécessaire
+    existing = db.query(WorkEntry).filter(
+        WorkEntry.project_id == project.id,
+        WorkEntry.source == EntrySource.git,
+        WorkEntry.metadata_json.like(f'%"commit_hash": "{payload.commit_hash[:8]}"%'),
+    ).first()
+    if existing:
+        if commit_date and abs((existing.created_at.replace(tzinfo=None) - commit_date.replace(tzinfo=None)).days) > 1:
+            existing.created_at = commit_date  # corrige la date si elle était wronge
+            db.commit()
+        return {"id": existing.id, "created_at": existing.created_at.isoformat(), "updated": True}
+
     entry = WorkEntry(
         project_id=project.id,
         source=EntrySource.git,
