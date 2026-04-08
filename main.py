@@ -365,6 +365,13 @@ def trigger_report(
     }
 
 
+@app.delete("/reports/all", dependencies=[Depends(require_api_key)])
+def delete_all_reports(db: Session = Depends(get_db)):
+    n = db.query(Report).delete()
+    db.commit()
+    return {"deleted": n}
+
+
 @app.get("/reports", dependencies=[Depends(require_api_key)])
 def list_reports(
     type: Optional[ReportType] = Query(None),
