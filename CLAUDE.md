@@ -29,6 +29,7 @@ templates/       → HTML HTMX Jinja2 (base, index, project, report)
 ## Conventions de code
 
 ### Python
+
 - Python 3.12+, pas de `from __future__ import annotations`
 - SQLAlchemy 2.x avec `Mapped` / `mapped_column` — ne pas utiliser l'ancienne API `Column()`
 - Pydantic v2 pour les schémas de requête dans `main.py`
@@ -38,11 +39,13 @@ templates/       → HTML HTMX Jinja2 (base, index, project, report)
 - Tags stockés en chaîne CSV (`"seo,dev,fix"`) — pas de table séparée, pas d'ORM relation pour ça
 
 ### Nommage
+
 - Slugs : kebab-case (`mon-projet-web`) — uniques, utilisés comme identifiants dans l'API
 - Endpoints : snake_case pour les query params, kebab-case pour les paths
 - Modèles DB : snake_case pour les colonnes, PascalCase pour les classes
 
 ### Auth
+
 - Header `X-API-Key` pour tous les endpoints API
 - Cookie `api_key` pour le dashboard HTML (login via `POST /login`)
 - `require_api_key` = dépendance FastAPI injectable — toujours utiliser `dependencies=[Depends(require_api_key)]`
@@ -68,13 +71,15 @@ Company  →  1:N  →  Project  →  1:N  →  WorkEntry
 ## Rapports — règles critiques (ne pas modifier sans raison forte)
 
 ### Modèles Claude utilisés
-| Type rapport | Modèle | Raison |
-|---|---|---|
-| Hebdomadaire | `claude-haiku-4-5-20251001` | Volume élevé, coût minimal |
-| Mensuel | `claude-haiku-4-5-20251001` | Idem |
-| Trimestriel | `claude-sonnet-4-6` | Analyse profonde, 1x/trimestre |
+
+| Type rapport | Modèle                      | Raison                         |
+| ------------ | --------------------------- | ------------------------------ |
+| Hebdomadaire | `claude-haiku-4-5-20251001` | Volume élevé, coût minimal     |
+| Mensuel      | `claude-haiku-4-5-20251001` | Idem                           |
+| Trimestriel  | `claude-sonnet-4-6`         | Analyse profonde, 1x/trimestre |
 
 ### Prompt system — principe fondateur
+
 Le `SYSTEM_PROMPT` s'applique **uniquement à la section technique**.
 La section exécutive a ses propres règles (voir ci-dessous) qui priment sur le system prompt.
 
@@ -82,7 +87,9 @@ La section exécutive a ses propres règles (voir ci-dessous) qui priment sur le
 **Section exécutive** : purement descriptive — ce qui a été produit, rien d'autre. Pas d'opinions, pas de recommandations, pas de jargon technique (commits, branches, etc.).
 
 ### Structure de sortie
+
 Chaque rapport contient **2 sections séparées par `---EXECUTIVE---`** :
+
 1. `content_technical` — pour le contributeur, détaillé, factuel
 2. `content_executive` — pour des dirigeants non-tech, langage business, indicateurs 🟢/🟡/🔴
 
@@ -101,12 +108,12 @@ Ne jamais bloquer le thread du scheduler — les jobs DB utilisent leur propre `
 
 ## Variables d'environnement
 
-| Variable | Obligatoire | Description |
-|---|---|---|
-| `DATABASE_URL` | oui | `postgresql://...` (Railway) ou `sqlite:///./worktracer.db` (dev local) |
-| `ANTHROPIC_API_KEY` | oui | Clé API Anthropic |
-| `API_KEY` | oui | Secret auth (générer avec `openssl rand -hex 32`) |
-| `TZ` | non | Timezone scheduler (défaut : `Europe/Paris`) |
+| Variable            | Obligatoire | Description                                                             |
+| ------------------- | ----------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`      | oui         | `postgresql://...` (Railway) ou `sqlite:///./worktracer.db` (dev local) |
+| `ANTHROPIC_API_KEY` | oui         | Clé API Anthropic                                                       |
+| `API_KEY`           | oui         | Secret auth (générer avec `openssl rand -hex 32`)                       |
+| `TZ`                | non         | Timezone scheduler (défaut : `Europe/Paris`)                            |
 
 Railway injecte parfois `postgres://` — `database.py` corrige automatiquement en `postgresql://`.
 
@@ -179,6 +186,7 @@ bash /Users/demdoum/rapportDeTravail/worktracer/hooks/backfill.sh --since "2026-
 **À chaque début de session**, lire la section `## Journal de session` en bas de ce fichier pour reprendre le contexte exact où la dernière session s'est arrêtée.
 
 **À chaque fin de session** (ou quand l'utilisateur le demande), mettre à jour le journal :
+
 - Ajouter une entrée datée avec ce qui a été fait, l'état actuel, et ce qui reste
 - Supprimer les entrées jugées obsolètes (tâches terminées depuis longtemps, contexte dépassé) pour ne pas surcharger
 - Conserver maximum 5-8 entrées — au-delà, fusionner les plus anciennes en un résumé court
@@ -201,17 +209,43 @@ bash /Users/demdoum/rapportDeTravail/worktracer/hooks/backfill.sh --since "2026-
 ### 2026-04-01 / 04-02 — Session initiale
 
 **Réalisé :**
+
 - Projet WorkTracer créé de zéro : FastAPI + PostgreSQL + APScheduler + Claude API + HTMX
 - Déployé sur Railway : `https://rapport-production-7ea0.up.railway.app` ✅
 - 5 entreprises et projets créés en DB : mepac, upgradeformation, upgradelearning, betclim, tfc (hotlineservice)
 - Hook git installé dans le repo `upgradeformation` (PROJECT_SLUG pré-rempli via `?project=`)
 
 **État actuel :**
+
 - Serveur up, DB connectée, scheduler actif (hebdo lundi 7h / mensuel 1er / trimestriel 1er jan-avr-jul-oct)
 - Hook installé sur upgradeformation — les autres repos (mepac, upgradelearning, betclim, tfc) restent à faire
 - Backfill historique pas encore lancé sur aucun repo
 
 **Reste à faire :**
+
 1. Installer le hook sur les 4 autres repos (mepac, upgradelearning, betclim, tfc) — commande prête dans la section "Ajout d'un nouveau projet"
 2. Lancer le backfill sur chaque repo depuis le bon dossier : `bash /Users/demdoum/rapportDeTravail/worktracer/hooks/backfill.sh --since "2026-04-01"` — à adapter dans `backfill.sh` : mettre le bon `PROJECT_SLUG` en haut du fichier avant chaque lancement
 3. Générer les premiers rapports une fois le backfill fait : `curl -s -X POST "https://rapport-production-7ea0.up.railway.app/reports/generate?type=monthly" -H "X-API-Key: e7840acc004da55b637716ea6ba38e58524cbea0d5005809af990e39713291bc"`
+
+## SESSION.md — Mémoire de session
+
+Un fichier `SESSION.md` existe à la racine du projet. Il sert de mémoire entre sessions.
+
+**Au début de chaque session :** lire `SESSION.md` pour reprendre le contexte sans que l'utilisateur ait à tout réexpliquer.
+
+**Pendant la session :** mettre à jour `SESSION.md` au fur et à mesure — quand une tâche est terminée, quand une décision est prise, quand un blocage est identifié.
+
+**Règles de mise à jour :**
+
+- Déplacer les tâches terminées de "En cours / À faire" vers "Fait récemment" (garder les 3-5 dernières)
+- Nettoyer "Fait récemment" quand la liste devient trop longue (supprimer les anciennes entrées)
+- Garder le fichier court — ce n'est pas un journal exhaustif, c'est un résumé utile
+- Ne pas dupliquer ce qui est déjà dans le code ou git log
+
+**Ce qui doit toujours y figurer :**
+
+- Ce qui est en cours ou bloqué
+- Les prochaines étapes prioritaires
+- Les décisions importantes prises récemment (choix technique, contrainte, etc.)
+
+---
