@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}Pointage — WorkTracer{% endblock %}
+
+{% block content %}
+<style>
+  .pointage-grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+  .big-time { font-size: 2rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text); }
+  .big-time.missing { color: var(--muted); }
+  .time-block { margin-bottom: 20px; }
+  .time-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+
+  .break-group { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+  .break-option { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); transition: border-color 0.15s; }
+  .break-option:hover { border-color: var(--accent); }
+  .break-option input[type=radio] { accent-color: var(--accent); }
+  .break-option.selected { border-color: var(--accent); background: #1e3a5f22; }
+  .break-note-input { margin-top: 4px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--font); font-size: 12px; width: 100%; display: none; }
+  .break-note-input.visible { display: block; }
+
+  .btn-arrival { background: var(--green); font-size: 13px; padding: 10px 20px; width: 100%; }
+  .btn-arrival:hover { background: #15803d; }
+  .btn-departure { background: #7c3aed; font-size: 13px; padding: 10px 20px; width: 100%; }
+  .btn-departure:hover { background: #6d28d9; }
+  .btn-departure:disabled { background: var(--bg3); color: var(--muted); cursor: not-allowed; }
+
+  .bilan-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .bilan-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; text-align: center; }
+  .bilan-value { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .bilan-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .bilan-pos { color: #4ade80; }
+  .bilan-neg { color: #f87171; }
+  .bilan-neutral { color: var(--text); }
+
+  .flash-ok  { background: #14532d; color: #4ade80; padding: 8px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 12px; }
+  .flash-err { background: #7f1d1d; color: #f87171; padding: 8px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 12px; }
+
+  .day-row td { font-size: 12px; }
+  .day-row.today td { background: #1e3a5f22; }
+  .day-row.missing td:first-child { color: var(--yellow); }
+  .day-row.complete td:first-child { color: #4ade80; }
+  .day-row.partial td:first-child { color: #60a5fa; }
+  .worked-col { font-weight: 600; }
+
+  .edit-form-card { background: var(--bg2); border: 1px solid var(--accent); border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+  .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .form-field input[type=time], .form-field input[type=date] {
+    padding: 6px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-family: var(--font); font-size: 12px;
+  }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-red { background: var(--red); }
+  .btn-red:hover { background: #b91c1c; }
+
+  .seed-bar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-bottom: 12px; }
+
+  @media (max-width: 800px) {
+    .pointage-grid { grid-template-columns: 1fr; }
+    .bilan-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div style="display:flex; align-items:baseline; gap:16px; margin-bottom:20px;">
+  <h1 style="font-size:1.1rem;">Pointage</h1>
+  <span style="color:var(--muted); font-size:12px;">
+    {{ month_names[today.month] }} {{ today.year }}
+  </span>
+</div>
+
+{% if flash %}
+  {% if "err" in request.query_params.get("msg","") %}
+    <div class="flash-err">{{ flash }}</div>
+  {% else %}
+    <div class="flash-ok">{{ flash }}</div>
+  {% endif %}
+{% endif %}
+
+{# ── Bilan mensuel ─────────────────────────────────────────────────────── #}
+<div class="bilan-grid">
+  <div class="bilan-item">
+    <div class="bilan-value bilan-neutral">{{ stats.elapsed_working_days }}/{{ stats.total_working_days }}</div>
+    <div class="bilan-label">Jours ouvrés</div>
+  </div>
+  <div class="bilan-item">
+    <div class="bilan-value bilan-neutral">{{ stats.target_fmt }}</div>
+    <div class="bilan-label">Objectif ({{ stats.elapsed_working_days }}×7h)</div>
+  </div>
+  <div class="bilan-item">
+    <div class="bilan-value bilan-neutral">{{ stats.actual_fmt }}</div>
+    <div class="bilan-label">Réalisé</div>
+  </div>
+  <div class="bilan-item">
+    <div class="bilan-value {% if stats.balance_minutes >= 0 %}bilan-pos{% else %}bilan-neg{% endif %}">
+      {{ stats.balance_days_fmt }}
+    </div>
+    <div class="bilan-label">
+      Solde ({{ stats.balance_fmt }})
+      {% if stats.balance_minutes < 0 %}— dû à l'entreprise{% else %}— avance{% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── Colonne gauche : pointage du jour + formulaire édition ────────────── #}
+<div class="pointage-grid">
+<div>
+
+{# Card pointage aujourd'hui #}
+<div class="card" style="margin-bottom:16px;">
+  <h3>Aujourd'hui — {{ day_names[today.weekday()] }} {{ today.strftime("%d/%m/%Y") }}</h3>
+
+  <div class="time-block" style="margin-top:12px;">
+    <div class="time-label">Arrivée</div>
+    {% if today_entry and today_entry.arrival_time %}
+      <div class="big-time">{{ today_entry.arrival_time.strftime("%H:%M") }}</div>
+    {% else %}
+      <div class="big-time missing">--:--</div>
+    {% endif %}
+  </div>
+
+  <div class="time-block">
+    <div class="time-label">Départ</div>
+    {% if today_entry and today_entry.departure_time %}
+      <div class="big-time">{{ today_entry.departure_time.strftime("%H:%M") }}</div>
+      {% set wm = calc_worked(today_entry.arrival_time, today_entry.departure_time, today_entry.break_minutes) %}
+      <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+        Travaillé : <strong style="color:var(--text);">{{ fmt_minutes(wm) }}</strong>
+        &nbsp;·&nbsp; Pause : {{ today_entry.break_type }}{% if today_entry.break_note and today_entry.break_type == "other" %} ({{ today_entry.break_note }}){% endif %}
+      </div>
+    {% else %}
+      <div class="big-time missing">--:--</div>
+    {% endif %}
+  </div>
+
+  {# Boutons rapides #}
+  {% if not (today_entry and today_entry.arrival_time) %}
+    {# Pointer arrivée — nécessite sélection pause #}
+    <form method="post" action="/pointage/pointer-arrivee" id="form-arrivee">
+      <p style="font-size:11px; color:var(--yellow); margin-bottom:8px;">
+        Sélectionner votre pause avant de pointer l'arrivée (obligatoire) :
+      </p>
+      {% for key, (label, minutes) in break_options.items() %}
+      <label class="break-option" id="lbl-quick-{{ key }}">
+        <input type="radio" name="break_type" value="{{ key }}" onchange="onQuickBreak(this)">
+        {{ label }}
+      </label>
+      {% endfor %}
+      <div class="break-note-input" id="quick-break-note-wrap">
+        <input type="text" name="break_note" id="quick-break-note" placeholder="Durée (ex: 45 min)" class="break-note-input visible" style="margin-top:0;">
+      </div>
+      <button type="submit" class="btn btn-arrival" style="margin-top:12px;" id="btn-arrivee" disabled>
+        Pointer l'arrivée maintenant
+      </button>
+    </form>
+  {% elif not (today_entry and today_entry.departure_time) %}
+    <p style="font-size:11px; color:var(--muted); margin-bottom:8px;">
+      Pause : <strong style="color:var(--text);">{{ today_entry.break_type }}{% if today_entry.break_note and today_entry.break_type == "other" %} ({{ today_entry.break_note }}){% endif %}</strong>
+      — <a href="/pointage?edit={{ today.isoformat() }}" style="font-size:11px;">modifier</a>
+    </p>
+    <form method="post" action="/pointage/pointer-depart">
+      <button type="submit" class="btn btn-departure">
+        Pointer le départ maintenant
+      </button>
+    </form>
+  {% else %}
+    <div style="margin-top:8px;">
+      <a href="/pointage?edit={{ today.isoformat() }}" class="btn btn-ghost btn-sm">Modifier</a>
+    </div>
+  {% endif %}
+</div>
+
+{# Formulaire édition (aujourd'hui ou jour sélectionné) #}
+<div class="edit-form-card">
+  <h3 style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:14px;">
+    Saisie / correction
+  </h3>
+  <form method="post" action="/pointage/save">
+    <div class="form-field" style="margin-bottom:12px;">
+      <label>Date</label>
+      <input type="date" name="date" value="{{ edit_date.isoformat() }}" max="{{ today.isoformat() }}">
+    </div>
+
+    <div class="form-row" style="margin-bottom:14px;">
+      <div class="form-field">
+        <label>Arrivée</label>
+        <input type="time" name="arrival_time"
+          value="{% if edit_entry and edit_entry.arrival_time %}{{ edit_entry.arrival_time.strftime('%H:%M') }}{% endif %}">
+      </div>
+      <div class="form-field">
+        <label>Départ</label>
+        <input type="time" name="departure_time"
+          value="{% if edit_entry and edit_entry.departure_time %}{{ edit_entry.departure_time.strftime('%H:%M') }}{% endif %}">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div class="time-label" style="margin-bottom:8px;">Pause (obligatoire)</div>
+      <div class="break-group" id="break-group-edit">
+        {% for key, (label, minutes) in break_options.items() %}
+        <label class="break-option{% if edit_entry and edit_entry.break_type == key %} selected{% endif %}" id="lbl-edit-{{ key }}">
+          <input type="radio" name="break_type" value="{{ key }}"
+            {% if edit_entry and edit_entry.break_type == key %}checked{% endif %}
+            onchange="onEditBreak(this)">
+          {{ label }}
+        </label>
+        {% endfor %}
+        <input type="text" name="break_note" id="edit-break-note"
+          placeholder="Durée (ex: 45 min)"
+          value="{% if edit_entry and edit_entry.break_note %}{{ edit_entry.break_note }}{% endif %}"
+          class="break-note-input{% if edit_entry and edit_entry.break_type == 'other' %} visible{% endif %}">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-sm">Enregistrer</button>
+  </form>
+</div>
+
+{# Initialiser les jours passés #}
+<div style="margin-top:4px;">
+  <form method="post" action="/pointage/seed" onsubmit="return confirm('Initialiser les jours ouvrés passés non renseignés avec 5h/j (sauf hier = matin seul) ?')">
+    <button type="submit" class="btn btn-ghost btn-sm" style="width:100%; text-align:center;">
+      Initialiser jours passés (5h/j)
+    </button>
+  </form>
+</div>
+
+</div>{# fin colonne gauche #}
+
+{# ── Colonne droite : tableau du mois ─────────────────────────────────── #}
+<div>
+  <div class="seed-bar">
+    <span style="font-size:11px; color:var(--muted);">
+      {{ stats.total_working_days }} jours ouvrés en {{ month_names[today.month] }}
+    </span>
+  </div>
+  <div class="card" style="padding:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Jour</th>
+          <th>Arrivée</th>
+          <th>Départ</th>
+          <th>Pause</th>
+          <th>Travaillé</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in stats.all_working_days %}
+          {% set e = stats.entries_by_date.get(d) %}
+          {% set is_today = (d == today) %}
+          {% set wm = calc_worked(e.arrival_time, e.departure_time, e.break_minutes) if e else none %}
+          {% set is_weekend = d.weekday() in weekend_days %}
+          {% set row_class = "today" if is_today else ("complete" if wm is not none else ("partial" if e else "missing")) %}
+        <tr class="day-row {{ row_class }}"{% if is_weekend %} style="opacity:0.4;"{% endif %}>
+          <td>
+            <span style="color:var(--muted);">{{ day_names[d.weekday()] }}</span>
+            {{ d.strftime("%d/%m") }}
+            {% if is_today %}<span class="badge badge-blue" style="margin-left:4px;">auj.</span>{% endif %}
+          </td>
+          <td>{% if e and e.arrival_time %}{{ e.arrival_time.strftime("%H:%M") }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}</td>
+          <td>{% if e and e.departure_time %}{{ e.departure_time.strftime("%H:%M") }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}</td>
+          <td style="color:var(--muted);">
+            {% if e and e.break_type %}
+              {{ e.break_type }}{% if e.break_note and e.break_type == "other" %} ({{ e.break_note }}){% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="worked-col">
+            {% if wm is not none %}
+              {% set color = "#4ade80" if wm >= 420 else ("#fbbf24" if wm >= 300 else "#f87171") %}
+              <span style="color:{{ color }};">{{ fmt_minutes(wm) }}</span>
+            {% else %}
+              <span style="color:var(--muted);">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/pointage?edit={{ d.isoformat() }}" style="font-size:11px; color:var(--muted);">éditer</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="color:var(--muted); text-align:center; padding:20px;">Aucun jour ouvré</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>{# fin pointage-grid #}
+
+<script>
+// ── Quick pointer (arrivée) ────────────────────────────────────────────────
+function onQuickBreak(radio) {
+  document.getElementById('btn-arrivee').disabled = false;
+  // Afficher/masquer note
+  const noteWrap = document.getElementById('quick-break-note-wrap');
+  noteWrap.style.display = radio.value === 'other' ? 'block' : 'none';
+  // Highlight
+  document.querySelectorAll('[id^="lbl-quick-"]').forEach(l => l.classList.remove('selected'));
+  document.getElementById('lbl-quick-' + radio.value).classList.add('selected');
+}
+
+// Init : masquer le champ note si "other" non sélectionné
+document.addEventListener('DOMContentLoaded', function() {
+  const noteWrap = document.getElementById('quick-break-note-wrap');
+  if (noteWrap) noteWrap.style.display = 'none';
+});
+
+// ── Formulaire édition ─────────────────────────────────────────────────────
+function onEditBreak(radio) {
+  const noteField = document.getElementById('edit-break-note');
+  noteField.classList.toggle('visible', radio.value === 'other');
+  document.querySelectorAll('[id^="lbl-edit-"]').forEach(l => l.classList.remove('selected'));
+  document.getElementById('lbl-edit-' + radio.value).classList.add('selected');
+}
+
+// Highlight la sélection courante dans le formulaire d'édition
+document.querySelectorAll('#break-group-edit input[type=radio]:checked').forEach(r => {
+  document.getElementById('lbl-edit-' + r.value).classList.add('selected');
+});
+
+// Changer la date dans le formulaire scroll vers ce jour dans le tableau
+document.querySelector('input[type=date][name=date]')?.addEventListener('change', function() {
+  const d = this.value;
+  // Optionnel: rediriger vers edit pour pré-remplir les champs
+  window.location.href = '/pointage?edit=' + d;
+});
+</script>
+{% endblock %}

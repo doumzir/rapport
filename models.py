@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type, time as time_type
 from typing import List, Optional
-from sqlalchemy import String, Text, DateTime, ForeignKey, Enum as SAEnum
+from sqlalchemy import String, Text, DateTime, Date, Time, Integer, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 import enum
@@ -93,3 +93,19 @@ class Report(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     project: Mapped[Optional["Project"]] = relationship("Project", back_populates="reports")
+
+
+class TimeEntry(Base):
+    """Pointage journalier : arrivée, départ, pause."""
+    __tablename__ = "time_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[date_type] = mapped_column(Date, unique=True, nullable=False)
+    arrival_time: Mapped[Optional[time_type]] = mapped_column(Time, nullable=True)
+    departure_time: Mapped[Optional[time_type]] = mapped_column(Time, nullable=True)
+    # "1h" | "1h30" | "no_break" | "other"
+    break_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    break_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    break_note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

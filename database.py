@@ -28,5 +28,5 @@ def get_db():
 
 
 def init_db():
-    from models import Company, Project, WorkEntry, Report  # noqa: F401
+    from models import Company, Project, WorkEntry, Report, TimeEntry  # noqa: F401
     Base.metadata.create_all(bind=engine)

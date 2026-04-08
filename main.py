@@ -2,19 +2,27 @@ import json
 import os
 import re
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type, time as time_type
 from typing import Optional
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db, init_db
-from models import Company, EntrySource, Project, ProjectStatus, Report, ReportType, WorkEntry
+from models import Company, EntrySource, Project, ProjectStatus, Report, ReportType, TimeEntry, WorkEntry
+from pointage import (
+    BREAK_OPTIONS,
+    calc_worked_minutes,
+    fmt_minutes,
+    fmt_minutes_days,
+    get_monthly_stats,
+    seed_past_days,
+)
 from reports import (
     generate_report,
     get_monthly_period,
@@ -375,6 +383,227 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 @app.get("/scheduler/jobs", dependencies=[Depends(require_api_key)])
 def scheduler_jobs():
     return get_jobs_info()
+
+
+# ── Pointage ──────────────────────────────────────────────────────────────────
+
+def _check_pointage_auth(request: Request) -> bool:
+    api_key_cookie = request.cookies.get("api_key", "")
+    api_key_query = request.query_params.get("key", "")
+    return bool(API_KEY and (api_key_cookie == API_KEY or api_key_query == API_KEY))
+
+
+@app.get("/pointage", response_class=HTMLResponse)
+def pointage_page(
+    request: Request,
+    edit: Optional[str] = Query(None),
+    msg: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    if not _check_pointage_auth(request):
+        return HTMLResponse(_login_page(), status_code=401)
+
+    today = date_type.today()
+    year, month = today.year, today.month
+
+    stats = get_monthly_stats(db, year, month)
+
+    # Entrée du jour
+    today_entry = stats["entries_by_date"].get(today)
+
+    # Entrée à éditer (si ?edit=YYYY-MM-DD)
+    edit_entry = None
+    edit_date = today
+    if edit:
+        try:
+            edit_date = date_type.fromisoformat(edit)
+            edit_entry = db.query(TimeEntry).filter(TimeEntry.date == edit_date).first()
+        except ValueError:
+            edit_date = today
+
+    messages = {
+        "arrivee_ok": "Arrivée pointée.",
+        "depart_ok": "Départ pointé.",
+        "save_ok": "Entrée enregistrée.",
+        "seed_ok": "Jours passés initialisés.",
+        "err_break": "Sélectionner un type de pause est obligatoire.",
+        "err_arrival": "Pointer l'arrivée avant le départ.",
+        "err_date": "Date invalide.",
+    }
+    flash = messages.get(msg, "")
+
+    return templates.TemplateResponse(
+        "pointage.html",
+        {
+            "request": request,
+            "today": today,
+            "today_entry": today_entry,
+            "edit_date": edit_date,
+            "edit_entry": edit_entry,
+            "stats": stats,
+            "break_options": BREAK_OPTIONS,
+            "fmt_minutes": fmt_minutes,
+            "fmt_minutes_days": fmt_minutes_days,
+            "calc_worked": calc_worked_minutes,
+            "flash": flash,
+            "month_names": [
+                "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+                "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+            ],
+            # weekday() : 0=Lun … 4=Ven(weekend) 5=Sam(weekend) 6=Dim
+            "day_names": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+            "weekend_days": {4, 5},  # vendredi + samedi
+        },
+    )
+
+
+@app.post("/pointage/save")
+async def pointage_save(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+
+    form = await request.form()
+    date_str = form.get("date", "")
+    arrival_str = form.get("arrival_time", "").strip()
+    departure_str = form.get("departure_time", "").strip()
+    break_type = form.get("break_type", "").strip()
+    break_note = form.get("break_note", "").strip()
+
+    try:
+        entry_date = date_type.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/pointage?msg=err_date", status_code=303)
+
+    if not break_type:
+        return RedirectResponse(f"/pointage?edit={date_str}&msg=err_break", status_code=303)
+
+    # Minutes de pause
+    break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
+    if break_type == "other":
+        # Essayer de parser depuis break_note (ex: "45 min" ou "45")
+        import re as _re
+        m = _re.search(r"\d+", break_note)
+        break_minutes = int(m.group()) if m else 0
+
+    arrival = None
+    departure = None
+    if arrival_str:
+        try:
+            h, mn = map(int, arrival_str.split(":"))
+            arrival = time_type(h, mn)
+        except (ValueError, AttributeError):
+            pass
+    if departure_str:
+        try:
+            h, mn = map(int, departure_str.split(":"))
+            departure = time_type(h, mn)
+        except (ValueError, AttributeError):
+            pass
+
+    if departure and not arrival:
+        return RedirectResponse(f"/pointage?edit={date_str}&msg=err_arrival", status_code=303)
+
+    entry = db.query(TimeEntry).filter(TimeEntry.date == entry_date).first()
+    if entry:
+        entry.arrival_time = arrival
+        entry.departure_time = departure
+        entry.break_type = break_type
+        entry.break_minutes = break_minutes
+        entry.break_note = break_note or None
+        entry.updated_at = datetime.now(timezone.utc)
+    else:
+        entry = TimeEntry(
+            date=entry_date,
+            arrival_time=arrival,
+            departure_time=departure,
+            break_type=break_type,
+            break_minutes=break_minutes,
+            break_note=break_note or None,
+        )
+        db.add(entry)
+    db.commit()
+    return RedirectResponse("/pointage?msg=save_ok", status_code=303)
+
+
+@app.post("/pointage/pointer-arrivee")
+async def pointer_arrivee(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+
+    form = await request.form()
+    break_type = form.get("break_type", "").strip()
+    break_note = form.get("break_note", "").strip()
+
+    if not break_type:
+        return RedirectResponse("/pointage?msg=err_break", status_code=303)
+
+    break_minutes = {"1h": 60, "1h30": 90, "no_break": 0}.get(break_type, 0)
+    if break_type == "other":
+        import re as _re
+        m = _re.search(r"\d+", break_note)
+        break_minutes = int(m.group()) if m else 0
+
+    now = datetime.now(timezone.utc).astimezone()
+    arrival = time_type(now.hour, now.minute)
+    today = date_type.today()
+
+    entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
+    if entry:
+        entry.arrival_time = arrival
+        entry.break_type = break_type
+        entry.break_minutes = break_minutes
+        entry.break_note = break_note or None
+        entry.updated_at = datetime.now(timezone.utc)
+    else:
+        entry = TimeEntry(
+            date=today,
+            arrival_time=arrival,
+            break_type=break_type,
+            break_minutes=break_minutes,
+            break_note=break_note or None,
+        )
+        db.add(entry)
+    db.commit()
+    return RedirectResponse("/pointage?msg=arrivee_ok", status_code=303)
+
+
+@app.post("/pointage/pointer-depart")
+async def pointer_depart(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+
+    today = date_type.today()
+    entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
+    if not entry or not entry.arrival_time:
+        return RedirectResponse("/pointage?msg=err_arrival", status_code=303)
+
+    now = datetime.now(timezone.utc).astimezone()
+    entry.departure_time = time_type(now.hour, now.minute)
+    entry.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse("/pointage?msg=depart_ok", status_code=303)
+
+
+@app.post("/pointage/seed")
+def pointage_seed(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+
+    today = date_type.today()
+    seed_past_days(db, today.year, today.month)
+    return RedirectResponse("/pointage?msg=seed_ok", status_code=303)
 
 
 # ── Git hook install script ───────────────────────────────────────────────────
