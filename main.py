@@ -13,7 +13,11 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from zoneinfo import ZoneInfo
+
 from database import get_db, init_db
+
+_TZ_ALGIERS = ZoneInfo("Africa/Algiers")
 from models import Company, EntrySource, Project, ProjectStatus, Report, ReportType, TimeEntry, WorkEntry
 from pointage import (
     BREAK_OPTIONS,
@@ -403,7 +407,7 @@ def pointage_page(
     if not _check_pointage_auth(request):
         return HTMLResponse(_login_page(), status_code=401)
 
-    today = date_type.today()
+    today = datetime.now(_TZ_ALGIERS).date()
     year, month = today.year, today.month
 
     stats = get_monthly_stats(db, year, month)
@@ -536,9 +540,9 @@ async def pointer_arrivee(
     if not _check_pointage_auth(request):
         raise HTTPException(status_code=401)
 
-    now = datetime.now(timezone.utc).astimezone()
+    now = datetime.now(_TZ_ALGIERS)
     arrival = time_type(now.hour, now.minute)
-    today = date_type.today()
+    today = now.date()
 
     entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
     if entry:
@@ -577,7 +581,7 @@ async def pointer_depart(
         m = _re.search(r"\d+", break_note)
         break_minutes = int(m.group()) if m else 0
 
-    now = datetime.now(timezone.utc).astimezone()
+    now = datetime.now(_TZ_ALGIERS)
     entry.departure_time = time_type(now.hour, now.minute)
     entry.break_type = break_type
     entry.break_minutes = break_minutes
