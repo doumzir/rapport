@@ -209,6 +209,14 @@ def git_webhook(payload: GitWebhookPayload, db: Session = Depends(get_db)):
         "files_changed": payload.files_changed[:20],
         "author": payload.author,
     }
+    # Utiliser le timestamp du commit si fourni (backfill), sinon maintenant
+    commit_date = None
+    if payload.timestamp:
+        try:
+            commit_date = datetime.fromisoformat(payload.timestamp.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+
     entry = WorkEntry(
         project_id=project.id,
         source=EntrySource.git,
@@ -216,6 +224,7 @@ def git_webhook(payload: GitWebhookPayload, db: Session = Depends(get_db)):
         body=f"Commit {payload.commit_hash[:8]} sur {payload.branch} — {len(payload.files_changed)} fichier(s) modifié(s)",
         metadata_json=json.dumps(meta),
         tags="git,commit",
+        created_at=commit_date or datetime.now(timezone.utc),
     )
     db.add(entry)
     db.commit()
