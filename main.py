@@ -430,6 +430,8 @@ def pointage_page(
         "depart_ok": "Départ pointé.",
         "save_ok": "Entrée enregistrée.",
         "seed_ok": "Jours passés initialisés.",
+        "pause_debut_ok": "Pause démarrée.",
+        "pause_fin_ok": "Pause terminée, durée déduite.",
         "err_break": "Sélectionner un type de pause est obligatoire.",
         "err_arrival": "Pointer l'arrivée avant le départ.",
         "err_date": "Date invalide.",
@@ -589,6 +591,40 @@ async def pointer_depart(
     entry.updated_at = datetime.now(timezone.utc)
     db.commit()
     return RedirectResponse("/pointage?msg=depart_ok", status_code=303)
+
+
+@app.post("/pointage/pause-debut")
+async def pause_debut(request: Request, db: Session = Depends(get_db)):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+    today = datetime.now(_TZ_ALGIERS).date()
+    entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
+    if not entry or not entry.arrival_time:
+        return RedirectResponse("/pointage?msg=err_arrival", status_code=303)
+    now = datetime.now(_TZ_ALGIERS)
+    entry.special_break_start = time_type(now.hour, now.minute)
+    entry.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse("/pointage?msg=pause_debut_ok", status_code=303)
+
+
+@app.post("/pointage/pause-fin")
+async def pause_fin(request: Request, db: Session = Depends(get_db)):
+    if not _check_pointage_auth(request):
+        raise HTTPException(status_code=401)
+    today = datetime.now(_TZ_ALGIERS).date()
+    entry = db.query(TimeEntry).filter(TimeEntry.date == today).first()
+    if not entry or not entry.special_break_start:
+        return RedirectResponse("/pointage", status_code=303)
+    now = datetime.now(_TZ_ALGIERS)
+    start = entry.special_break_start.hour * 60 + entry.special_break_start.minute
+    end = now.hour * 60 + now.minute
+    duration = max(0, end - start)
+    entry.extra_break_minutes = (entry.extra_break_minutes or 0) + duration
+    entry.special_break_start = None
+    entry.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse("/pointage?msg=pause_fin_ok", status_code=303)
 
 
 @app.post("/pointage/seed")

@@ -23,6 +23,7 @@ def calc_worked_minutes(
     arrival: Optional[time],
     departure: Optional[time],
     break_minutes: int,
+    extra_break_minutes: int = 0,
 ) -> Optional[int]:
     """Retourne les minutes travaillées, ou None si incomplet."""
     if arrival is None or departure is None:
@@ -31,7 +32,7 @@ def calc_worked_minutes(
     dep = departure.hour * 60 + departure.minute
     if dep <= arr:
         return 0
-    return max(0, dep - arr - break_minutes)
+    return max(0, dep - arr - break_minutes - extra_break_minutes)
 
 
 def fmt_minutes(total: Optional[int]) -> str:
@@ -99,7 +100,7 @@ def get_monthly_stats(db: Session, year: int, month: int) -> dict:
 
     actual_minutes = 0
     for e in entries:
-        wm = calc_worked_minutes(e.arrival_time, e.departure_time, e.break_minutes)
+        wm = calc_worked_minutes(e.arrival_time, e.departure_time, e.break_minutes, e.extra_break_minutes)
         if wm is not None:
             actual_minutes += wm
 

@@ -107,5 +107,8 @@ class TimeEntry(Base):
     break_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     break_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     break_note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    # Pauses spéciales (hors pause déjeuner)
+    special_break_start: Mapped[Optional[time_type]] = mapped_column(Time, nullable=True)
+    extra_break_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

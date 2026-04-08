@@ -122,7 +122,7 @@
     <div class="time-label">Départ</div>
     {% if today_entry and today_entry.departure_time %}
       <div class="big-time">{{ today_entry.departure_time.strftime("%H:%M") }}</div>
-      {% set wm = calc_worked(today_entry.arrival_time, today_entry.departure_time, today_entry.break_minutes) %}
+      {% set wm = calc_worked(today_entry.arrival_time, today_entry.departure_time, today_entry.break_minutes, today_entry.extra_break_minutes) %}
       <div style="color:var(--muted); font-size:12px; margin-top:4px;">
         Travaillé : <strong style="color:var(--text);">{{ fmt_minutes(wm) }}</strong>
         &nbsp;·&nbsp; Pause : {{ today_entry.break_type }}{% if today_entry.break_note and today_entry.break_type == "other" %} ({{ today_entry.break_note }}){% endif %}
@@ -131,6 +131,52 @@
       <div class="big-time missing">--:--</div>
     {% endif %}
   </div>
+
+  {# Pause spéciale — visible dès que arrivée est pointée et pas encore parti #}
+  {% if today_entry and today_entry.arrival_time and not today_entry.departure_time %}
+  <div style="margin-bottom:16px; padding:12px; background:var(--bg3); border-radius:6px; border:1px solid var(--border);">
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px;">Pause spéciale</div>
+    {% if today_entry.special_break_start %}
+      <div style="font-size:12px; color:var(--yellow); margin-bottom:8px;">
+        En pause depuis <strong>{{ today_entry.special_break_start.strftime("%H:%M") }}</strong>
+        <span id="pause-timer" style="margin-left:6px;"></span>
+      </div>
+      <form method="post" action="/pointage/pause-fin">
+        <button type="submit" class="btn" style="background:#ca8a04; width:100%;">
+          Fin de pause
+        </button>
+      </form>
+      <script>
+        (function() {
+          const start = "{{ today_entry.special_break_start.strftime('%H:%M') }}";
+          const [h, m] = start.split(':').map(Number);
+          function tick() {
+            const now = new Date();
+            const startMin = h * 60 + m;
+            // heure locale du navigateur
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+            const diff = Math.max(0, nowMin - startMin);
+            const dh = Math.floor(diff / 60), dm = diff % 60;
+            document.getElementById('pause-timer').textContent =
+              '(' + (dh ? dh + 'h' : '') + String(dm).padStart(2,'0') + 'min)';
+          }
+          tick(); setInterval(tick, 30000);
+        })();
+      </script>
+    {% else %}
+      {% if today_entry.extra_break_minutes > 0 %}
+      <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">
+        Pauses prises : <strong style="color:var(--text);">{{ fmt_minutes(today_entry.extra_break_minutes) }}</strong>
+      </div>
+      {% endif %}
+      <form method="post" action="/pointage/pause-debut">
+        <button type="submit" class="btn btn-ghost" style="width:100%;">
+          Prendre une pause
+        </button>
+      </form>
+    {% endif %}
+  </div>
+  {% endif %}
 
   {# Boutons rapides #}
   {% if not (today_entry and today_entry.arrival_time) %}
@@ -243,7 +289,7 @@
         {% for d in stats.all_working_days %}
           {% set e = stats.entries_by_date.get(d) %}
           {% set is_today = (d == today) %}
-          {% set wm = calc_worked(e.arrival_time, e.departure_time, e.break_minutes) if e else none %}
+          {% set wm = calc_worked(e.arrival_time, e.departure_time, e.break_minutes, e.extra_break_minutes if e else 0) if e else none %}
           {% set is_weekend = d.weekday() in weekend_days %}
           {% set row_class = "today" if is_today else ("complete" if wm is not none else ("partial" if e else "missing")) %}
         <tr class="day-row {{ row_class }}"{% if is_weekend %} style="opacity:0.4;"{% endif %}>
