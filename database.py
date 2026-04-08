@@ -30,3 +30,19 @@ def get_db():
 def init_db():
     from models import Company, Project, WorkEntry, Report, TimeEntry  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    _migrate()
+
+
+def _migrate():
+    """Migrations manuelles pour colonnes ajoutées après création initiale."""
+    migrations = [
+        "ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS special_break_start TIME",
+        "ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS extra_break_minutes INTEGER NOT NULL DEFAULT 0",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(__import__("sqlalchemy").text(sql))
+                conn.commit()
+            except Exception:
+                pass
