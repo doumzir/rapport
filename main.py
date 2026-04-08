@@ -331,6 +331,8 @@ def list_entries(
 def trigger_report(
     type: ReportType = Query(...),
     project: Optional[str] = Query(None),
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
     project_id = None
@@ -340,8 +342,13 @@ def trigger_report(
             raise HTTPException(status_code=404, detail="Project not found")
         project_id = p.id
 
+    import calendar as _cal
     now = datetime.now(timezone.utc)
-    if type == ReportType.weekly:
+    if year and month and type == ReportType.monthly:
+        period_start = datetime(year, month, 1, tzinfo=timezone.utc)
+        last_day = _cal.monthrange(year, month)[1]
+        period_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    elif type == ReportType.weekly:
         period_start, period_end = get_weekly_period(now)
     elif type == ReportType.monthly:
         period_start, period_end = get_monthly_period(now)
