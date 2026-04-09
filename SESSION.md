@@ -14,8 +14,8 @@ Système opérationnel sur Railway : `https://rapport-production-7ea0.up.railway
 | `betclim` | Projet BetClim | ❌ repo introuvable |
 
 ### Rapports générés
-- Mensuels Jan/Fév/Mars 2026 pour tfc, upgradeformation, mepac (#23–31)
-- Trimestriels Q1 2026 pour tfc, upgradeformation, mepac (#32–34)
+- Mensuels Jan/Fév/Mars 2026 pour tfc, upgradeformation, mepac (#35–43)
+- Trimestriels Q1 2026 pour tfc, upgradeformation, mepac (#44–46, doublon #47 mepac)
 - Rapports hebdo : générés automatiquement chaque lundi par le scheduler
 
 ---
@@ -31,7 +31,8 @@ Système opérationnel sur Railway : `https://rapport-production-7ea0.up.railway
 
 ## En cours / À faire
 
-- Régénérer les rapports Q1 (supprimés en fin de session, nouveaux prompts en attente de déploiement push)
+- ~~Régénérer les rapports Q1~~ ✅ fait (2026-04-09)
+- Supprimer le doublon rapport #47 (mepac Q1) — pas d'endpoint DELETE par ID pour l'instant
 - Algerian holidays non implémentées (différé explicitement par l'utilisateur)
 - Entrées dupliquées avec date 2026-04-08 dans la DB (~97) — n'affectent pas les rapports historiques mais représentent du bruit
 - Vérifier que upgradelearning et betclim ont bien des repos accessibles
